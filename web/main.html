@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<meta charset="utf-8" />
+<script type="text/javascript" src="/eel.js"></script>
+<script src="./js/fabric.min.js"></script>
+<script type="text/javascript" src='./js/layer/index.js'></script>
+<script src="./js/bootstrap@5.1.2.bundle.min.js"></script>
+<script type="text/javascript" src='./js/editor.js'></script>
+<script type="text/javascript" src='./js/canvas.js'></script>
+<script src="./js/jquery-3.6.0.min.js"></script>
+<link rel="stylesheet" href="./fonts/font-awesome-4.7.0/css/font-awesome.min.css">
+<link href="./css/bootstrap@5.1.2.min.css" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<title>Sketch Vectorization</title>
+
+<div id="grid">
+  <div id="sidebar">
+    <ul>
+      <li id="li-thin"><label><input type="checkbox" class="form-check-input" id="c_thin"> Thin</label>
+      </li>
+      <li id="li-line"><label><input type="checkbox" class="form-check-input" id="c_line"> Line Extraction</label></li>
+      <li id="li-bezier"><label><input type="checkbox" class="form-check-input" id="c_bezier"> Bezier</label></li>
+      <li id="li-rdp"><label><input type="checkbox" class="form-check-input" id="c_rdp" checked> RDP Simplify</label></li>
+      <li id="li-resize">
+        Resize: <input type="number" class="form-control" id="resize" placeholder="512" value="512">
+      </li>
+      <li><input type="file" id="img-file" class="form-control" accept=".jpg, .jpeg, .png" onchange="loadRaster(this.files)">
+      </li>
+      <li><button id="vectorize" onclick="vectorize()" class="btn btn-primary" disabled>Vectorize</button></li>
+      <li><button id="updateprocess" onclick="updateProcess()" class="btn btn-primary" disabled>Update</button></li>
+      <li><button id="postprocess" onclick="postProcess()" class="btn btn-primary" disabled>Final-Process</button></li>
+      <li>Show:</li>
+      <!-- <li><label><input type="checkbox" class="form-check-input" onclick="checkRaster()" id="c_raster"> Raster Input</label></li> -->
+      <!-- <li><label><input type="checkbox" class="form-check-input" onclick="checkCanvas()" id="c_canvas"> Canvas</label></li> -->
+      <li><label><input type="checkbox" class="form-check-input" onclick="checkScaledRaster()" id="c_scaled_raster"> Original Raster Input</label>
+      </li>
+      <li><label><input type="checkbox" class="form-check-input" onclick="checkVecOutput()" id="c_vec_out"> Vector Output (Raw)</label></li>
+      <li><label><input type="checkbox" class="form-check-input" onclick="checkVecUpdate()" id="c_vec_update"> Vector Output (Updated)</label>
+      </li>
+      <li><label><input type="checkbox" class="form-check-input" onclick="checkVecPost()" id="c_vec_final"> Vector Output (Final)</label></li>
+      <li><label><input type="checkbox" class="form-check-input" onclick="checkKeypoint()" id="c_keypoints"> Keypoints</label></li>
+      <li><label><input type="checkbox" class="form-check-input" onclick="checkUncertainUsm()" id="c_uncertain_usm"> Suggested USM</label></li>
+      <li><label><input type="checkbox" class="form-check-input" onclick="checkUsm()" id="c_usm"> USM</label></li>
+      <li><label id="l_grid"><input type="checkbox" class="form-check-input" onclick="checkGrid()" id="c_grid"> Grid</label></li>
+    </ul>
+  </div>
+  <div id="layers">
+    <!-- <div id="raster" class="layer" style="border:2px solid #aaa" hidden><img id="raster-input"></div> -->
+    <div id="can-bg" class="layer" hidden>
+      <canvas id="c" width="0" height="0" style="border:2px solid #aaa"></canvas>
+    </div>
+  </div>
+  <div id="widget">
+    <div id="bd-wrapper" ng-controller="CanvasControls" hidden>
+      <ul>
+        <li>
+          <button type="button" id="recenter" class="btn btn-primary" onclick="recenter()">Recenter</button>
+        </li>
+        <li>
+          <button type="button" id="undo" onclick="undo()" class="btn btn-primary">Undo</button>
+          <button type="button" id="redo" onclick="redo()"  class="btn btn-primary"disabled>Redo</button>
+        </li>
+      </ul>
+      <div id="kp-div" class="border-div">
+        <div id="keypoint-options">
+          <label><input type="checkbox" class="form-check-input" onclick="checkKeypointRadius()" id="c_kp_radius" checked> Fixed Keypoint Radius</label>
+          <br/>
+          <label for="keypoint-radius" class="short">Keypoint Radius:</label>
+          <span class="info">20</span><input type="range" value="20" min="1" max="20" id="keypoint-radius"><br>
+          <!-- <br/> -->
+          <label for="keypoint-opacity" class="short">Keypoint Opacity:</label>
+          <span class="info">0.5</span><input type="range" value="0.5" min="0" max="1" step="0.1" id="keypoint-opacity"><br>
+          <button type="button" id="delete" class="btn btn-primary" onclick="deleteObj()">Delete</button>
+        </div>
+        <br/>
+        <br/>
+      </div>
+      <br/>
+      <div id="usm-div" class="border-div">
+        <div class="btn-group-vertical" role="group" aria-label="Basic radio toggle button group">
+          <input type="radio" class="btn-check" name="btnradio" id="drawing-mode" autocomplete="off" onmouseover="overLasso()" onmouseout="outLasso()" checked>
+          <label class="btn btn-outline-primary" for="drawing-mode" onmouseover="overLasso()" onmouseout="outLasso()"><img id="lasso-img" src="./icon/lasso.png" width="25" height="25"></img> Lasso</label>
+  
+          <input type="radio" class="btn-check" name="btnradio" id="pen-mode" autocomplete="off" onmouseover="overPen()" onmouseout="outPen()" >
+          <label class="btn btn-outline-primary" for="pen-mode" onmouseover="overPen()" onmouseout="outPen()"><img id="pen-img"  src="./icon/pen_blue.png" width="25" height="25"></img> Pencil</label>
+        </div>
+
+        <!-- <button id="clear-canvas" class="btn btn-primary">Clear</button><br> -->
+        <div id="drawing-mode-options">
+          <label><input type="checkbox" class="form-check-input" onclick="checkCleanUsm()" id="c_clean_usm"> Erase</label>
+          <div style="display: none">
+          <label for="drawing-line-width">Line width:</label>
+          <span class="info">1</span><input type="range" value="1" min="0" max="5" id="drawing-line-width"><br>
+      
+          <label for="drawing-color">Line color:</label>
+          <input type="color" value="#F7A6CD" id="drawing-color"><br>
+          </div>
+        </div>
+        <br />
+        <br />
+      </div>
+      <br/>
+      <div id="unusm-div" class="border-div">
+        <label>Suggested USM:</label>
+        <!-- <button id="display-usm" class="btn btn-primary" onclick="usmRegionDisplay()" ><a id="display-label">Hide suggested USM</a></button><br> -->
+        <div id="display-options">
+          
+        </div>
+        <br />
+        <br />
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade bd-example-modal-lg" id="loading" data-backdrop="static" data-keyboard="false" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content" style="width: 48px">
+      <span class="fa fa-spinner fa-spin fa-3x"></span>
+    </div>
+  </div>
+</div>
+
+
+<script language="javascript" type="text/javascript">
+  "use strict";
+  let conciseMode = true;        // hide some UI elements
+  let filename = null;
+  let prefix = null;
+  let img = null;
+  let buffer = null;
+  let bufferUncertain = null;
+  let ratio = 0.5;  // global scaling for canvas
+  let raw_width = 0, raw_height = 0;  // size for scaled raw image
+  let usmCtx = null;
+  let usmUncertainCtx = null;
+  let idata = null;
+  let un_idata = null;
+  let usmCanvas = null;
+  let usm_dirty_row = null;            // used for redo/undo, always growing, track all changed pixels
+  let usm_dirty_column = null;
+  let usm_dirty_dict = {};
+  let usm_region_dict = {};    // mapping from region index to position array
+  let usm_region_indices = null; // top k regions displayed
+  let usm_pixel_dict = null;     // given a pixel, find the region index
+  let displayRegion = true;      // whether display uncertain usm regions
+  let usmImg = null;             // image for usm
+  let usmUnCanvas = null;
+  let startTime = null;    // after loading input file
+  // statistics usage
+  let vecBtnCnt = 0;
+  let updateBtnCnt = 0;
+  let finalBtnCnt = 0;
+  let undoBtnCnt = 0;
+  let redoBtnCnt = 0;
+  let deleteBtnCnt = 0;
+  let lassoBtnCnt = 0;
+  let penBtnCnt = 0;
+  let eraseCnt = 0;        // erase checker
+  let rasterLayerCnt = 0;  // raster checker
+  let rawLayerCnt = 0;     // vector raw checker
+  let updateLayerCnt = 0;  // vector updated checker
+  let finalLayerCnt = 0;   // vector final checker
+  let kpLayerCnt = 0;      // keypoint checker
+  let unUsmLayerCnt = 0;   // suggested usm checker
+  let usmLayerCnt = 0;     // usm checker
+  let usmRegionCnt = 0;    // suggested usm regions
+  let usmRegionDblCnt = 0; // suggested usm regions: double click
+  
+
+  initCanvas();  // canvas setting
+  handleUI();
+  document.onkeyup = function(e) {
+    if (e.which == 67) {
+      // C -> recenter canvas
+      recenter();
+    }
+    if (e.which == 68) {
+      // D -> delete keypoint
+      deleteObj();
+    }
+    else if (e.which == 70) {
+      // F -> toggle final vector output 
+      document.querySelector('#c_vec_final').click();
+    } 
+    else if (e.which == 71) {
+      // G -> toggle grid 
+      document.querySelector('#c_grid').click();
+    } 
+    else if (e.which == 73) {
+      // I -> info 
+      printStat();
+    } 
+    else if (e.which == 75) {
+      // K -> toggle keypoint
+      document.querySelector('#c_keypoints').click();
+    } 
+    else if (e.which == 76) {
+      // L -> lasso mode
+      document.querySelector('#drawing-mode').click();
+    } 
+    else if (e.which == 77) {
+      // M -> toggle updated raster input
+      document.querySelector('#c_vec_update').click();
+    } 
+    else if (e.which == 79) {
+      // O -> toggle original raster input
+      document.querySelector('#c_scaled_raster').click();
+    } 
+    else if (e.which == 80) {
+      // P -> pen mode
+      document.querySelector('#pen-mode').click();
+    } 
+    else if (e.which == 82) {
+      // R -> toggle raw vector output
+      document.querySelector('#c_vec_out').click();
+    } 
+    else if (e.which == 83) {
+      // S -> toggle suggested USM
+      document.querySelector('#c_uncertain_usm').click();
+    } 
+    else if (e.which == 85) {
+      // U -> toggle USM
+      document.querySelector('#c_usm').click();
+    } 
+    else if (e.which == 86) {
+      // V -> view mode 
+      conciseMode = !conciseMode;
+      handleUI();
+    } 
+  };
+
+  function resizeCanvas(w, h) {
+    // get viewport size
+    const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+    const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0)-40;
+    ratio = vh / h;
+    $("#can-bg").removeAttr("hidden");
+    $("#can-bg").css("display", "block");
+    var raster = document.getElementById("raster-input");
+    var canvas = window.__canvas;
+    raw_width = w;
+    raw_height = h;
+    canvas.setWidth(w * ratio);
+    canvas.setHeight(h * ratio);
+    addGrids();
+    canvas.setZoom(ratio);
+    // update widget position
+    let rect = document.querySelector('#layers').getBoundingClientRect();
+    let bg = document.querySelector('#can-bg');
+    let widget = document.querySelector('#widget');
+      widget.style.left = bg.offsetWidth + rect.left + "px";
+  }
+
+  function loadScaledInput() {
+    window.manager.activeLayer = window.manager.getLayer(LAYER_RASTER);
+    fabric.Image.fromURL('./output/' + prefix + '.png', function (oImg) {
+      oImg.selectable = false;
+      oImg.evented = false;
+      oImg.imageSmoothing = false;    // important for zooming
+      window.__canvas.add(oImg);
+      window.__canvas.renderAll();
+      $("#c_scaled_raster").prop('checked', true);
+    });
+  }
+
+  function loadRawVectorized(callback) {
+    var canvas = window.__canvas;
+    window.manager.activeLayer = window.manager.getLayer(LAYER_VEC_RAW);
+    fabric.loadSVGFromURL('./output/' + prefix + '_raw.svg', function (objects, options) {
+      var obj = fabric.util.groupSVGElements(objects, options);
+      obj.selectable = false;
+      obj.evented = false;
+      obj.opacity = .5;
+      canvas.add(obj);
+      // canvas.renderAll();
+      $("#c_vec_out").prop('checked', true);
+      callback();    // after loading svg, callback
+    });
+  }
+
+  function loadRefinedVectorized(svgDrawing, callback) {
+    let rawChecker = document.getElementById('c_vec_out');
+    if(rawChecker.checked){
+      // hide raw vec output
+      rawChecker.click();
+    }
+    var canvas = window.__canvas;
+    window.manager.activeLayer = window.manager.getLayer(LAYER_VEC_REFINE);
+    if(window.manager.activeLayer.endIndex - window.manager.activeLayer.startIndex == 1){
+      // already loaded
+      fabric.loadSVGFromString(svgDrawing, function (objects, options) {
+        var obj = fabric.util.groupSVGElements(objects, options);
+        obj.selectable = false;
+        obj.evented = false;
+        obj.opacity = 0.7;
+        obj.visible = 1;
+        // canvas.add(obj);
+        window.manager.enableEvt = false;
+        let curObj = canvas._objects[window.manager.activeLayer.startIndex];
+        let curIndex = window.manager.activeLayer.startIndex;
+        canvas._objects.splice(curIndex, 0, obj);
+        canvas.remove(curObj);  
+        window.manager.enableEvt = true;
+        canvas.renderAll();
+        $("#c_vec_update").prop('checked', true);
+        updateActiveLayer();
+        callback();
+      });
+    }
+    else{
+      // new
+      fabric.loadSVGFromString(svgDrawing, function (objects, options) {
+        var obj = fabric.util.groupSVGElements(objects, options);
+        obj.selectable = false;
+        obj.evented = false;
+        obj.opacity = 0.7;
+        obj.visible = 1;
+        canvas.add(obj);
+        canvas.renderAll();
+        $("#c_vec_update").prop('checked', true);
+        updateActiveLayer();
+        callback();
+      });
+    }
+  }
+
+  function loadFinalVectorized(auto, callback) {
+    let rawChecker = document.getElementById('c_vec_out');
+    if(rawChecker.checked){
+      // hide raw vec output
+      rawChecker.click();
+    }
+    var canvas = window.__canvas;
+    window.manager.activeLayer = window.manager.getLayer(LAYER_VEC_FINAL);
+    let final = './output/' + prefix + '_vis.svg';
+    if(auto){
+      final = './output/' + prefix + '_final.svg';
+    }
+    console.log(final)
+    if(window.manager.activeLayer.endIndex - window.manager.activeLayer.startIndex == 1){
+      // already loaded
+      fabric.loadSVGFromURL(final, function (objects, options) {
+        var obj = fabric.util.groupSVGElements(objects, options);
+        obj.selectable = false;
+        obj.evented = false;
+        obj.opacity = .7;
+        window.manager.enableEvt = false;
+        let curObj = canvas._objects[window.manager.activeLayer.startIndex];
+        let curIndex = window.manager.activeLayer.startIndex;
+        canvas._objects.splice(curIndex, 0, obj);
+        canvas.remove(curObj);  
+        window.manager.enableEvt = true;
+        canvas.renderAll();
+        $("#c_vec_final").prop('checked', true);
+        updateActiveLayer();
+        callback();
+      });
+    }
+    else{
+      // new
+      fabric.loadSVGFromURL(final, function (objects, options) {
+        var obj = fabric.util.groupSVGElements(objects, options);
+        obj.selectable = false;
+        obj.evented = false;
+        obj.opacity = .7;
+        canvas.add(obj);
+        canvas.renderAll();
+        $("#c_vec_final").prop('checked', true);
+        updateActiveLayer();
+        callback();
+      });
+    }
+  }
+
+  function loadRaster(files) {
+    if(window.__canvas){
+      window.__canvas.clear();
+      window.manager.reset();
+      let matches = document.querySelectorAll(".region-img");
+      matches.forEach((img) => {
+        img.remove();
+      });
+      _config.canvasState.length = 0;
+      _config.managerState.length = 0;
+      _config.usmState.length = 0;
+      _config.currentStateIndex = -1;
+      updateHistoryBtn();
+      hideCheckers();
+    }
+    log("load raster after file selection");
+    if (files && files.length == 1) {
+      filename = files[0].name;
+      prefix = filename.split('.')[0];
+      let reader = new FileReader();
+      reader.onload = function () {
+        $('#loading').modal('show');
+        img = reader.result;
+        preprocessRaster(filename, reader.result);
+      }
+      reader.readAsDataURL(files[0]);
+    }
+    document.querySelector('#vectorize').removeAttribute("disabled");
+    document.querySelector('#postprocess').setAttribute("disabled", true);
+  }
+
+  function loadKeypointsData(end_r, end_c, sharp_r, sharp_c, junc_r, junc_c) {
+    // load with indices of rows and columns
+    window.manager.activeLayer = window.manager.getLayer(LAYER_KEYPOINT);
+    var canvas = window.__canvas;
+    canvas.renderOnAddRemove = false;
+    let scale = getScale();
+    for (var i = 0; i < end_r.length; i++) {
+      addCircle(end_r[i], end_c[i], COLOR_END, scale);
+    }
+    for (var i = 0; i < sharp_r.length; i++) {
+      addCircle(sharp_r[i], sharp_c[i], COLOR_SHARP, scale);
+    }
+    for (var i = 0; i < junc_r.length; i++) {
+      addCircle(junc_r[i], junc_c[i], COLOR_JUNC, scale);
+    }
+    // canvas.renderOnAddRemove = true;
+    // window.__canvas.renderAll();
+    $("#c_keypoints").prop('checked', true);
+  }
+
+function loadUsmData(usm_r, usm_c) {
+  // load with indices of rows and columns
+  usm_dirty_row = usm_r;
+  usm_dirty_column = usm_c;
+  buffer = new Uint8ClampedArray(raw_width * raw_height * 4);
+  for (var i = 0; i < usm_r.length; i++) {
+    var pos = (usm_c[i] * raw_width + usm_r[i]) * 4;
+    buffer[pos  ] = COLOR_USM_R;           
+    buffer[pos+1] = COLOR_USM_G;           
+    buffer[pos+2] = COLOR_USM_B;           
+    buffer[pos+3] = COLOR_USM_A;  
+    usm_dirty_dict["r"+usm_r[i]+"c"+usm_c[i]] = true;
+  }
+  // Create the canvas.
+  usmCanvas = document.createElement('canvas');
+  usmCtx = usmCanvas.getContext('2d');
+  // Make the canvas size match.
+  usmCanvas.width = raw_width;
+  usmCanvas.height = raw_height;
+  // create imageData object
+  idata = usmCtx.createImageData(raw_width, raw_height);
+  // set our buffer as source
+  idata.data.set(buffer);
+  // update canvas with new data
+  usmCtx.putImageData(idata, 0, 0);
+  var canvas = window.__canvas;
+  window.manager.activeLayer = window.manager.getLayer(LAYER_USM);
+  canvas.renderOnAddRemove = false;
+  usmImg = new fabric.Image(usmCanvas, {
+    opacity: 1,
+    selectable: false,
+    hasControls: false,
+    evented: false
+  });
+  usmImg.imageSmoothing = false;   // important for zooming
+  canvas.add(usmImg);
+  updateLayerEvt(LAYER_KEYPOINT, false);   // disable evt handling for keypoints
+  // canvas.renderOnAddRemove = true;
+  // window.__canvas.renderAll();
+  $("#c_usm").prop('checked', true);
+  window.__canvas.isDrawingMode = true;
+  document.querySelector('#usm-div').style.display = "inline-block";
+}
+
+function loadUsmUncertainData(usm_r, usm_c) {
+  // load with indices of rows and columns
+  bufferUncertain = new Uint8ClampedArray(raw_width * raw_height * 4);
+  for (var i = 0; i < usm_r.length; i++) {
+    var pos = (usm_c[i] * raw_width + usm_r[i]) * 4;
+    bufferUncertain[pos  ] = COLOR_UN_USM_R;           
+    bufferUncertain[pos+1] = COLOR_UN_USM_G;           
+    bufferUncertain[pos+2] = COLOR_UN_USM_B;           
+    bufferUncertain[pos+3] = COLOR_UN_USM_A;  
+  }
+  // Create the canvas.
+  usmUnCanvas = document.createElement('canvas');
+  usmUncertainCtx = usmUnCanvas.getContext('2d');
+  // Make the canvas size match.
+  usmUnCanvas.width = raw_width;
+  usmUnCanvas.height = raw_height;
+  // create imageData object
+  un_idata = usmUncertainCtx.createImageData(raw_width, raw_height);
+  // set our buffer as source
+  un_idata.data.set(bufferUncertain);
+  // update canvas with new data
+  usmUncertainCtx.putImageData(un_idata, 0, 0);
+  var canvas = window.__canvas;
+  window.manager.activeLayer = window.manager.getLayer(LAYER_UNCERTAIN_USM);
+  canvas.renderOnAddRemove = false;
+  var imgInstance = new fabric.Image(usmUnCanvas, {
+    opacity: 1,
+    selectable: false,
+    evented: false
+  });
+  imgInstance.imageSmoothing = false;   // important for zooming
+  canvas.add(imgInstance);
+  // canvas.renderOnAddRemove = true;
+  // window.__canvas.renderAll();
+  $("#c_uncertain_usm").prop('checked', true);
+  updateActiveLayer();
+}
+
+  // expose function to Python
+  eel.expose(updateRaster);
+  function updateRaster(w, h){
+    resizeCanvas(w, h); 
+    // update check state
+    var cGrid = document.getElementById('c_grid');
+    cGrid.checked = true;
+    loadScaledInput();
+    setTimeout(function () {
+      $('#loading').modal('hide');
+    }, 300);
+  }
+
+  eel.expose(updateVectorizedFiles);
+  function updateVectorizedFiles(name, end_r, end_c, sharp_r, sharp_c, junc_r, junc_c, usm_r, usm_c, region_indices, region_dict, pixel_dict, unusm_r, unusm_c) {
+    $("#bd-wrapper").removeAttr("hidden");
+    $("#bd-wrapper").css("display", "block");
+    document.querySelector('#vectorize').setAttribute("disabled", true);
+    usm_region_dict = region_dict;
+    usm_pixel_dict = pixel_dict;
+    usm_region_indices = region_indices;
+    // svg is loaded asynchronously, set a callback function as parameter
+    loadRawVectorized(function () {
+      // keypoint
+      loadKeypointsData(end_r, end_c, sharp_r, sharp_c, junc_r, junc_c); 
+      // suggested usm
+      loadUsmUncertainData(unusm_r, unusm_c);
+      createRegionImg();
+      // usm
+      loadUsmData(usm_r, usm_c);
+      // set active layer
+      updateActiveLayer();
+      // render in the end
+      window.__canvas.renderOnAddRemove = true;
+      window.__canvas.renderAll();
+      // history
+      initHistory();  // we don't want to redo/undo the svg drawing
+      // hide loading
+      $('#loading').modal('hide');
+    });
+  }
+
+  eel.expose(updateRefinedFiles);
+  function updateRefinedFiles(name, svgDrawing){
+    log('update refined')
+    loadRefinedVectorized(svgDrawing, function () {
+      $('#loading').modal('hide');
+    });
+  }
+
+  eel.expose(updateFinalFiles);
+  function updateFinalFiles(name, auto){
+    console.log('update final')
+    loadFinalVectorized(auto, function () {
+      $('#loading').modal('hide');
+    });
+  }
+
+  // call Python code
+  async function preprocessRaster(filename, data) {
+    var thinCheck = document.getElementById('c_thin');
+    var lineCheck = document.getElementById('c_line');
+    var resize = document.getElementById("resize").value;
+    await eel.preprocess_file(filename, data, thinCheck.checked == true, lineCheck.checked == true, resize);
+  }
+
+  async function runVectorization(filename) {
+    await eel.process_file(filename);
+  }
+
+  async function updateVectorization(filename, end_x, end_y, sharp_x, sharp_y, junc_x, junc_y, usm_x, usm_y) {
+    var bezierCheck = document.getElementById('c_bezier');
+    var rdpCheck = document.getElementById('c_rdp');
+    await eel.update(filename, end_x, end_y, sharp_x, sharp_y, junc_x, junc_y, usm_x, usm_y, bezierCheck.checked == true, rdpCheck.checked == true);
+  }
+
+  async function runPost(filename) {
+    var bezierCheck = document.getElementById('c_bezier');
+    var rdpCheck = document.getElementById('c_rdp');
+    await eel.final_process(filename, bezierCheck.checked == true, rdpCheck.checked == true, false);
+  }
+
+  // buttons
+  function vectorize() {
+    log("click vectorize button");
+    vecBtnCnt++;
+    $('#loading').modal('show');
+    runVectorization(filename);
+    document.getElementById("updateprocess").removeAttribute("disabled");
+    document.getElementById("postprocess").removeAttribute("disabled");
+  }
+
+  function updateProcess() {
+    log("click update button");
+    updateBtnCnt++;
+    $('#loading').modal('show');
+    document.getElementById("postprocess").removeAttribute("disabled");
+    // gather positions
+    var canvas = window.__canvas;
+    var keyLayer = window.manager.getLayer(LAYER_KEYPOINT);
+    var end_x = [], end_y = [],
+      sharp_x = [], sharp_y = [],
+      junc_x = [], junc_y = [],
+      usm_x = [], usm_y = [];
+    for (var i = keyLayer.startIndex; i < keyLayer.endIndex; i++) {
+      var obj = canvas._objects[i];
+      var mat = obj.calcTransformMatrix();
+      if (obj.fill == COLOR_END) {
+        end_x.push(mat[4]);
+        end_y.push(mat[5]);
+      }
+      else if (obj.fill == COLOR_SHARP) {
+        sharp_x.push(mat[4]);
+        sharp_y.push(mat[5]);
+      }
+      else if (obj.fill == COLOR_JUNC) {
+        junc_x.push(mat[4]);
+        junc_y.push(mat[5]);
+      }
+    }
+    // get usm value
+    for (var i = 0; i < raw_width; i++) {
+      for (var j = 0; j < raw_height; j++) {
+        var pos = (j * raw_width + i) * 4;
+        if(buffer[pos]){
+          usm_x.push(i);
+          usm_y.push(j);
+        }
+      }
+    }
+    updateVectorization(filename, end_x, end_y, sharp_x, sharp_y, junc_x, junc_y, usm_x, usm_y);
+    printStat();    // show current statistics when updating
+  }
+
+function postProcess() {
+  log("click final process button");
+  finalBtnCnt++;
+  $('#loading').modal('show');
+  runPost(filename);
+  printStat();    // show current statistics when updating
+} 
+</script>
+
+</html>
