@@ -531,8 +531,8 @@ def open_img(
     # predict udf
 
     resize_to = int(resize_to)
-    # DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
-    DEVICE = 'cpu'
+    DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
+    # DEVICE = 'cpu'
     ww, hh = img_input.size
     longer = ww if ww > hh else hh
     resize = True if longer > resize_to else False
