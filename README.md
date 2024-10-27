@@ -162,7 +162,7 @@ python train_s1.py --ndc_add --udf udf.pth --ndc ndc.pth --workers 16 --bs 8 --r
 ```
 If you have account on [Weights & Biases](https://wandb.ai/site/), you can also add parameters: ```--usr your_wandb_user_name```, ```--name the_training_task_name``` and ``` --log ``` at each stage of your traning, this will log most the training details to wandb.
 
-Also if you found the code can't strat the training task normally, you can just try 
+Also if you found the code can't start the training task normally, you can just try 
 ```
 python train_s1.py --deubg
 ```
