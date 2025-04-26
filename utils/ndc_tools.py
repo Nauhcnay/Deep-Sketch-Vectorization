@@ -1752,15 +1752,8 @@ def query_keypt_by_bbox(keypt_svg, bbox, re_scale):
     if keypt_svg is not None:
         end_points = filter_pts(keypt_svg["end_point"] * re_scale, left, top, right, bottom)
         sharp_turns = filter_pts(keypt_svg["sharp_turn"] * re_scale, left, top, right, bottom)
-        if refine_mode:
-            t_junctions = filter_pts(keypt_svg["T"] * re_scale, left, top, right, bottom)
-            x_junctions = filter_pts(keypt_svg["X"] * re_scale, left, top, right, bottom)
-            star_junctions = filter_pts(keypt_svg["star"] * re_scale, left, top, right, bottom)
-            if len(star_junctions)  > 0:
-                keypts.append(star_junctions)    
-        else:
-            t_junctions = filter_pts(keypt_svg["t_junction"] * re_scale, left, top, right, bottom)
-            x_junctions = filter_pts(keypt_svg["x_junction"] * re_scale, left, top, right, bottom)
+        t_junctions = filter_pts(keypt_svg["t_junction"] * re_scale, left, top, right, bottom)
+        x_junctions = filter_pts(keypt_svg["x_junction"] * re_scale, left, top, right, bottom)
             
         if len(end_points) > 0:
             keypts.append(end_points)
@@ -1801,7 +1794,7 @@ def query_keypt_by_bbox(keypt_svg, bbox, re_scale):
         avg_pt = []
     
     
-    return end_points, sharp_turns, t_junctions, avg_pt
+    return end_points, sharp_turns, t_junctions, x_junctions, avg_pt
     
 
 def filter_pts(pts, left, top, right, bottom, eps = 0):

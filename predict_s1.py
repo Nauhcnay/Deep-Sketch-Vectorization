@@ -226,7 +226,11 @@ def load_img(img_input, device, up_scale,
             interpolation=cv2.INTER_AREA)
     elif thin is not None and line_extractor is None:
         print("log:\tpre-processing with line normalizer")
-        img_temp = thin(img_input.convert("L"))
+        try:
+            img_np = np.array(Image.open(img_input).convert("L"))
+        except BaseException:
+            img_np = np.array(img_input.convert("L"))
+        img_temp = thin(img_np)
         img_np = (img_temp.cpu().squeeze().numpy() * 255).astype(int)
     elif line_extractor is not None and thin is not None:
         print("log:\tpre-processing with line extractor and normalizer")
@@ -288,7 +292,7 @@ def load_img(img_input, device, up_scale,
     if path_to_out is not None:
         if up_scale:
             img_np = cv2.resize(
-                img_np, (w * 2, h * 2), interpolation=cv2.INTER_AREA)
+                img_np.astype(np.uint8), (w * 2, h * 2), interpolation=cv2.INTER_AREA)
         if os.path.exists(path_to_out) == False:
             os.makedirs(path_to_out)
         Image.fromarray(img_np).save(path.join(path_to_out, name + '.png'))

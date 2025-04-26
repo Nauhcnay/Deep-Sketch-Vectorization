@@ -1142,14 +1142,11 @@ def simplify_graph(paths, keypts = None, mode = 'hybird', skip_len = 4):
 def fitBezier(strokes):
     res = []
     for s in strokes:
-        # pts = flatten_paths_to_pts_array(s, True)
         pts = flatten_paths_known_to_be_polyline_to_pts_array(s)
-        bezier = fitCurve(pts, 0.5)
-        ## This test passes, so I replace fitCurve on import
-        # bezier2 = FitCurves.FitCurve( pts, 0.5 )
-        # assert np.abs( np.asarray(bezier) - bezier2 ).max() < 1e-10
+        bezier = fitCurve(pts, 0.1)
         st = Path()
         for b in bezier:
+            length_before = b.length()
             b = [complex(*arr) for arr in b]
             b = CubicBezier(b[0],b[1],b[2],b[3])
             # skip really bad fitting results
