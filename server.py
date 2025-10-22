@@ -6,7 +6,7 @@ import io
 from pathlib import Path
 from PIL import Image
 from predict_s1 import open_img, vectorize, usm_surgery, finalize, usm_to_regions
-from utils.save_string_to_path_in_background import save_string_to_path_in_background
+# from utils.save_string_to_path_in_background import save_string_to_path_in_background
 
 usm_width = 0
 usm_height = 0

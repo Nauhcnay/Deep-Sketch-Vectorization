@@ -8,7 +8,7 @@ from tqdm import tqdm
 from PIL import Image
 from svgpathtools import Path, Line, wsvg
 from scipy.interpolate import interpn, interp2d, interp1d, BivariateSpline
-from skimage.morphology import skeletonize, skeletonize_3d
+from skimage.morphology import skeletonize
 from functools import partial
 
 scaling = None
