@@ -296,7 +296,8 @@ def load_img(img_input, device, up_scale,
         if os.path.exists(path_to_out) == False:
             os.makedirs(path_to_out)
         Image.fromarray(img_np).save(path.join(path_to_out, name + '.png'))
-    return img.to(device), img_np, (h_raw, w_raw), name
+    # Return processed dimensions (h, w) not original (h_raw, w_raw) to fix SVG canvas size
+    return img.to(device), img_np, (h, w), name
 
 
 def Ext(pts):
