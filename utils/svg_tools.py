@@ -1145,13 +1145,11 @@ def fitBezier(strokes):
         pts = flatten_paths_known_to_be_polyline_to_pts_array(s)
         bezier = fitCurve(pts, 0.1)
         st = Path()
+        # fitCurve returns each curve as a list of 4 numpy points (not a svgpathtools segment).
         for b in bezier:
-            length_before = b.length()
-            b = [complex(*arr) for arr in b]
-            b = CubicBezier(b[0],b[1],b[2],b[3])
             # skip really bad fitting results
             # if b.length() <= 1.1 * s.length():
-            st.append(CubicBezier(b[0],b[1],b[2],b[3]))
+            st.append(CubicBezier(*[complex(*p) for p in b]))
         res.append(st)
     return res
 
