@@ -664,7 +664,8 @@ def downsample_all(edge_map_x, edge_map_y, pt_map, usm, valence_map, pt_type, li
         # drop current USM region if it doesn't contain any keypoint or it is too large
         if (pt_type[r_mask] > 0).sum() == 0:
           r_mask = cv2.resize(r_mask.astype(np.uint8), (w_down, h_down), interpolation = cv2.INTER_NEAREST)
-          usm_downsample[r_mask] = False
+          # r_mask must be boolean: a uint8 array would index rows 0 and 1 instead.
+          usm_downsample[r_mask.astype(bool)] = False
     # Image.fromarray(usm_downsample).save("usm_down.png")
     usm_down = usm_pre_down | usm_downsample
     # usm_down = usm_pre_down

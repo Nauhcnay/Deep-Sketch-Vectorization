@@ -481,6 +481,9 @@ def simplify_SVG(
     name, _ = path.splitext(name)
     name = "_".join(name.split("_")[:-1])
     paths, (h, w) = open_svg_flatten(path_to_svg)
+    # The SVG is written at 2x (lines_to_svg(lines * 2, ...)) but the keypoints are in 1x pixel
+    # units; scale them so simplify_graph aligns them with the right vertices.
+    keypt_pre_dict = {k: np.asarray(v) * 2 for k, v in keypt_pre_dict.items()}
     strokes, nodes = simplify_graph(
         paths, keypt_pre_dict, mode="hybird", skip_len=skip_len)
 
